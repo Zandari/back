@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <errno.h>
-#include <stdio.h>
+#include <stdio.h> 
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -8,7 +8,7 @@
 #define KEY_LEFT      'h'
 #define KEY_RIGHT     'l'
 #define KEY_QUIT      'q'
-#define KEY_SELECT    13
+#define KEY_SELECT    13  // <enter>
 #define SELECTED_FG   14
 #define WIDTH         20
 #define DELIMITER     " "
@@ -31,21 +31,25 @@ char* get_current_dir_() {
 }
 
 
-
 char** split_str_(const char* str, const char* del, size_t* n) {
   char* str_cp = malloc(strlen(str) + 1);
   strcpy(str_cp, str);
-  
+
   *n = 0;
-  char** result = NULL;
-  char* ptr = strtok(str_cp, del);
-  while (ptr != NULL) {
+  char** array = NULL;
+  char* ptr_a = strtok(str_cp, del);
+  char* ptr_b = strtok(NULL, del);
+  while (ptr_b != NULL) {
     (*n)++;
-    result = realloc(result, *n * sizeof(char*));
-    result[*n - 1] = ptr;
-    ptr = strtok(NULL, del);
+    array = realloc(array, *n * sizeof(char*));
+    char* str_n = malloc(strlen(ptr_a) + 1);
+    strcpy(str_n, ptr_a);
+    array[*n - 1] = str_n;
+    ptr_a = ptr_b;
+    ptr_b = strtok(NULL, del);
   }
-  return result;
+  free(str_cp);
+  return array;
 }
 
 
@@ -70,11 +74,41 @@ char* join_str_(char** array, size_t size, const char* del) {
 }
 
 
+// returns new array with inserted string, passed data stays unchanged
+char** insert_str_(char** array, const char* str, size_t pos, size_t size) {
+  char** array_cp = malloc(sizeof(char*) * (size + 1));
+
+  size_t step = 0;
+  for (size_t i = 0; i < size + 1; ++i) {
+    char* s = NULL;
+    if (i != pos) {
+      s = malloc(strlen(array[i - step]) + 1);
+      strcpy(s, array[i - step]);
+    }
+    else {
+      s = malloc(strlen(str) + 1);
+      strcpy(s, str);
+      step++;
+    }
+    array_cp[i] = s;
+  }
+  return array_cp;
+}
+
+
 char* conc_str_(const char* first, const char* second) {
   char* str = malloc(strlen(first) + strlen(second) + 1);
   strcpy(str, first);
   strcpy(str + strlen(first), second);
   return str;
+}
+
+char* slice_str_(const char* str, size_t a, size_t b) {
+  char* str_cp = malloc(b - a + 1);
+  for (size_t i = a; i < b; ++i)
+    str_cp[i - a] = str[i];
+  str_cp[b - a] = '\0';
+  return str_cp;
 }
 
 
@@ -116,7 +150,6 @@ int display(char** dirs, size_t size, size_t cursor_pos) {
     else
       printf("%.*s\e[0m", WIDTH, dir);
     printf("%s", DELIMITER);
-    //printf("\e[38;5;%dm\e[48;5;%dm%.*s\e[0m%s", fg, bg, WIDTH, dir, DELIMITER);
   }
 }
 
@@ -138,10 +171,22 @@ char* perform_(char** dirs, size_t n) {
   if (state == QUITED_STATE)
     cursor_pos = n - 1;
 
-  char* path = join_str_(dirs, cursor_pos + 1, "/");
-  char* path_f = conc_str_("/", path);     
-  free(path);
-  return path_f;
+  char* path;
+  if (cursor_pos != 0) {
+    char* path_r = join_str_(dirs, cursor_pos + 1, "/");
+    path = slice_str_(path, 1, strlen(path));
+    free(path_r); 
+  }
+  else {
+    path = conc_str_("/", "");  // to dynamic memory
+  }
+  return path;
+}
+
+void free_array(char** array, size_t size) {
+  for (int i = 0; i < size; ++i)
+    free(array[i]);
+  free(array);
 }
 
 
@@ -154,7 +199,10 @@ int main(int argc, char* argv[]) {
 
   char* cwd = get_current_dir_();
   size_t dirs_size;
-  char** dirs = split_str_(cwd, "/", &dirs_size);
+  char** dirs_o = split_str_(cwd, "/", &dirs_size);
+  char** dirs = insert_str_(dirs_o, "/", 0, dirs_size);
+  free_array(dirs_o, dirs_size);
+  dirs_size++;
   free(cwd);
 
   char* resulted_path = perform_(dirs, dirs_size);
@@ -167,7 +215,7 @@ int main(int argc, char* argv[]) {
     fclose(output_file);
   }
 
-  free(dirs);
+  free_array(dirs, dirs_size);
   free(resulted_path);
 
   return 0;
