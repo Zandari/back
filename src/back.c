@@ -37,16 +37,14 @@ char** split_str_(const char* str, const char* del, size_t* n) {
 
   *n = 0;
   char** array = NULL;
-  char* ptr_a = strtok(str_cp, del);
-  char* ptr_b = strtok(NULL, del);
-  while (ptr_b != NULL) {
+  char* ptr = strtok(str_cp, del);
+  while (ptr != NULL) {
     (*n)++;
     array = realloc(array, *n * sizeof(char*));
-    char* str_n = malloc(strlen(ptr_a) + 1);
-    strcpy(str_n, ptr_a);
+    char* str_n = malloc(strlen(ptr) + 1);
+    strcpy(str_n, ptr);
     array[*n - 1] = str_n;
-    ptr_a = ptr_b;
-    ptr_b = strtok(NULL, del);
+    ptr = strtok(NULL, del);
   }
   free(str_cp);
   return array;
@@ -122,11 +120,9 @@ enum State {
 void handle_input(size_t* cursor_pos, size_t folders_num, enum State* state) {
   char input_key = getc(stdin);
   switch (input_key) {
-    case 75:  // left arrow key
     case KEY_LEFT:
       if (*cursor_pos > 0) (*cursor_pos)--;
       break;
-    case 77:  // right arrow key
     case KEY_RIGHT:
       if (*cursor_pos < folders_num - 1) (*cursor_pos)++;
       break;
@@ -155,7 +151,7 @@ int display(char** dirs, size_t size, size_t cursor_pos) {
 
 
 char* perform_(char** dirs, size_t n) {
-  system("/bin/stty raw"); // changing output behaviour. idk what it actually does
+  system("/bin/stty raw"); 
 
   enum State state = READY_STATE;
 
@@ -174,12 +170,11 @@ char* perform_(char** dirs, size_t n) {
   char* path;
   if (cursor_pos != 0) {
     char* path_r = join_str_(dirs, cursor_pos + 1, "/");
-    path = slice_str_(path, 1, strlen(path));
+    path = slice_str_(path_r, 1, strlen(path_r));
     free(path_r); 
   }
-  else {
-    path = conc_str_("/", "");  // to dynamic memory
-  }
+  else
+    path = conc_str_("/", "");    
   return path;
 }
 
